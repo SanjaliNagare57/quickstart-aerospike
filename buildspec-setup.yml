@@ -16,7 +16,7 @@ phases:
       - echo "https://$GITHUB_USERNAME:$GITHUB_TOKEN@github.com" > ~/.git-credentials
       - git config --global credential.helper store
       - git config --global url."https://github.com/".insteadOf "git@github.com:"
-      - git config --global init.defaultBranch ${ReleaseBranch}
+      - git config --global init.defaultBranch ${GITHUB_BRANCH}
       - git init
       - git remote add origin https://github.com/$GITHUB_USERNAME/$GITHUB_REPO.git
       - git fetch
