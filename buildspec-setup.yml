@@ -11,7 +11,7 @@ phases:
       - pip install --upgrade pip
       - pip3 install taskcat
       - pip3 install --upgrade taskcat
-  pre-build:
+  pre_build:
     commands:
       - echo "https://$GITHUB_USERNAME:$GITHUB_TOKEN@github.com" > ~/.git-credentials
       - git config --global credential.helper store
