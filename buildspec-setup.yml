@@ -11,7 +11,26 @@ phases:
       - pip install --upgrade pip
       - pip3 install taskcat
       - pip3 install --upgrade taskcat
-      
+  pre-build:
+    commands:
+      - echo "https://$GITHUB_USERNAME:$GITHUB_TOKEN@github.com" > ~/.git-credentials
+      - git config --global credential.helper store
+      - git config --global url."https://github.com/".insteadOf "git@github.com:"
+      - git config --global init.defaultBranch ${ReleaseBranch}
+      - git init
+      - git remote add origin https://github.com/$GITHUB_USERNAME/$GITHUB_REPO.git
+      - git fetch
+      - git checkout --force --track origin/$GITHUB_BRANCH
+      - |
+        git config -f .gitmodules --get-regexp '^submodule\..*\.path$' |
+          while read path_key path
+          do
+              url_key=$(echo $path_key | sed 's/\.path/.url/')
+              url=$(git config -f .gitmodules --get "$url_key")
+              git submodule add $url $path
+          done
+      - git submodule init
+      - git submodule update --init --recursive    
   build:
     commands:
       - echo Build phase started on `date`

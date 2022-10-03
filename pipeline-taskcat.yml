@@ -140,6 +140,10 @@ Resources:
       Environment:
         Type: LINUX_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL
+        GITHUB_USERNAME: ${GitHubUser}
+        GITHUB_TOKEN: ${GitHubToken}
+        GITHUB_REPO: ${GitHubRepo}
+        GITHUB_BRANCH: ${GitHubBranch}
         Image: 'aws/codebuild/amazonlinux2-x86_64-standard:4.0'
         EnvironmentVariables:
           - Name: PIPELINE_BUCKET
