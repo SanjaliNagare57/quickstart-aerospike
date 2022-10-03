@@ -1,5 +1,5 @@
 project:
-  name: quickstart-aerospike
+  name: Aerospike-DBaaS
   owner: quickstart-eng@amazon.com
   package_lambda: true
   shorten_stack_name: true
@@ -23,16 +23,4 @@ tests:
       NumberOfAZs: 2
     regions:
     - us-east-1
-  aerospike-multi-region:
-    parameters:
-      AvailabilityZones: $[taskcat_genaz_3]
-      NumberOfAZs: 3
-      MonitoringStack: "None"
-    regions:
-    - us-east-2
-    - us-west-1
-    - us-west-2
-    - ca-central-1
-    - eu-central-1
-    - ap-southeast-1
-    - sa-east-1
+
