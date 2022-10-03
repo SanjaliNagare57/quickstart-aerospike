@@ -11,18 +11,14 @@ phases:
       - pip install --upgrade pip
       - pip3 install taskcat
       - pip3 install --upgrade taskcat
-  pre_build:
-    commands:
-      - echo "Entered the pre_build phase..."
-      - git clone git@github.com:Aerospike-DBaaS/quickstart-aerospike.git
-      - git submodule update --init --recursive
-
+      
   build:
     commands:
       - echo Build phase started on `date`
+      - git submodule update --init --recursive
       #- taskcat test run
       - taskcat test run -n -k -t aerospike-single-region
-      
+
 artifacts:
   files:
     - '**/*'
