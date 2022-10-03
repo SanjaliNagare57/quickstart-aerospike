@@ -140,16 +140,25 @@ Resources:
       Environment:
         Type: LINUX_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL
-        GITHUB_USERNAME: ${GitHubUser}
-        GITHUB_TOKEN: ${GitHubToken}
-        GITHUB_REPO: ${GitHubRepo}
-        GITHUB_BRANCH: ${GitHubBranch}
         Image: 'aws/codebuild/amazonlinux2-x86_64-standard:4.0'
         EnvironmentVariables:
           - Name: PIPELINE_BUCKET
             Type: PLAINTEXT
             Value:
               'Fn::Sub': '${PipelineBucket}'
+          - Name: GITHUB_USERNAME
+            Type: PLAINTEXT
+            Value: ${GitHubUser}
+          - Name: GITHUB_TOKEN
+            Type: PLAINTEXT
+            Value: ${GitHubToken}
+          - Name: GITHUB_REPO
+            Type: PLAINTEXT
+            Value: ${GitHubRepo}
+          - Name: GITHUB_BRANCH
+            Type: PLAINTEXT
+            Value: ${GitHubBranch}            
+
       Source:
         Type: GITHUB
         Location: !Sub 'https://github.com/${GitHubUser}/${GitHubRepo}.git'
