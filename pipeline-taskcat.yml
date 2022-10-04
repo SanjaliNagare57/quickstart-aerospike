@@ -130,40 +130,84 @@ Resources:
                 Resource: '*'
             Version: 2012-10-17
   CodeBuildSetup:
-    Type: 'AWS::CodeBuild::Project'
-    DependsOn: CodeBuildRole
+    Type: AWS::CodeBuild::Project
     Properties:
-      Description: Setup Test Files. For example uploading to S3
+      Description: !Sub >-
+        Submit build jobs for ${GitHubRepo} as part of a CI/CD pipeline.
       ServiceRole: !GetAtt CodeBuildRole.Arn
       Artifacts:
         Type: NO_ARTIFACTS
       Environment:
         Type: LINUX_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL
-        Image: 'aws/codebuild/amazonlinux2-x86_64-standard:4.0'
+        Image: aws/codebuild/standard:5.0
         EnvironmentVariables:
-          - Name: PIPELINE_BUCKET
-            Type: PLAINTEXT
-            Value:
-              'Fn::Sub': '${PipelineBucket}'
-          - Name: GITHUB_USERNAME
-            Type: PLAINTEXT
-            Value: ${GitHubUser}
-          - Name: GITHUB_TOKEN
-            Type: PLAINTEXT
-            Value: ${GitHubToken}
-          - Name: GITHUB_REPO
-            Type: PLAINTEXT
-            Value: ${GitHubRepo}
-          - Name: GITHUB_BRANCH
-            Type: PLAINTEXT
-            Value: ${GitHubBranch}            
-
+          - Name: PROJECT_NAME
+            Value: !Ref GitHubRepo
+          - Name: PROJECT_OWNER
+            Value: !Ref GitHubUser
+          - Name: SOURCE_BRANCH
+            Value: !Ref GitHubBranch
+        PrivilegedMode: true
+      Visibility: PRIVATE
       Source:
-        Type: GITHUB
-        Location: !Sub 'https://github.com/${GitHubUser}/${GitHubRepo}.git'
-        BuildSpec: buildspec-setup.yml
-      TimeoutInMinutes: 10
+        Type: CODEPIPELINE
+        GitCloneDepth: 1
+        BuildSpec: !Sub |
+          version: 0.2
+          env:
+            shell: bash
+            secrets-manager:
+              GITHUB_TOKEN: ${GitHubToken}
+              GITHUB_USERNAME: ${GitHubUser}
+          phases:
+            install:
+              runtime-versions:
+                python: 3.9
+              commands:
+                - echo install phase started on `date`
+                - python --version
+                - 'curl -O https://bootstrap.pypa.io/get-pip.py'
+                - python3 get-pip.py
+                - pip install --upgrade pip
+                - pip3 install taskcat
+                - pip3 install --upgrade taskcat
+            pre_build:
+              commands:
+                - echo "Entered the pre_build phase..."
+                - echo "Current directory is $CODEBUILD_SRC_DIR"
+                - ls -lA
+                - dirname=${!PWD##*/}
+                - echo "Directory name $dirname"
+                - cd ..
+                - mv $dirname $PROJECT_NAME
+                - ls -lA
+                - cd $PROJECT_NAME
+                - echo "Temporarily adding git credential store..."
+                - echo "https://$GITHUB_USERNAME:$GITHUB_TOKEN@github.com" > ~/.git-credentials
+                - git config --global credential.helper store
+                - git config --global url."https://github.com/".insteadOf "git@github.com:"
+                - git config --global init.defaultBranch ${GitHubBranch}
+                - git init
+                - git remote add origin https://github.com/$PROJECT_OWNER/$PROJECT_NAME.git
+                - git fetch
+                - git checkout --force --track origin/$SOURCE_BRANCH
+                - |
+                  git config -f .gitmodules --get-regexp '^submodule\..*\.path$' |
+                    while read path_key path
+                    do
+                        url_key=$(echo $path_key | sed 's/\.path/.url/')
+                        url=$(git config -f .gitmodules --get "$url_key")
+                        git submodule add $url $path
+                    done
+                - git submodule init
+                - git submodule update --init --recursive
+            build:
+              commands:
+                - echo Build phase started on `date`
+                - git submodule update --init --recursive
+                #- taskcat test run
+                - taskcat test run -n -k -t aerospike-single-region
   CodeBuildCleanup:
     Type: 'AWS::CodeBuild::Project'
     DependsOn: CodeBuildRole
