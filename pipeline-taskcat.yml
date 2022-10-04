@@ -42,22 +42,6 @@ Metadata:
       GitHubBranch:
         default: GitHub Branch Name
 Resources:
-  Secrets:
-    Type: AWS::SecretsManager::Secret
-    Properties:
-      Description: TaskCat CI secrets.
-      SecretString: !Sub >-
-        {
-          "Token": "${GitHubToken}",
-          "Username": "${GitHubUser}"
-        }
-  SiteBucket:
-    Type: 'AWS::S3::Bucket'
-    DeletionPolicy: Retain
-    Properties:
-      AccessControl: PublicRead
-      WebsiteConfiguration:
-        IndexDocument: index.html
   CodePipelineRole:
     Type: 'AWS::IAM::Role'
     Properties:
@@ -155,61 +139,12 @@ Resources:
             Type: PLAINTEXT
             Value:
               'Fn::Sub': '${PipelineBucket}'
-          - Name: GITHUB_USERNAME
-            Type: PLAINTEXT
-            Value: ${GitHubUser}
-          - Name: GITHUB_TOKEN
-            Type: PLAINTEXT
-            Value: ${GitHubToken}
-          - Name: GITHUB_REPO
-            Type: PLAINTEXT
-            Value: ${GitHubRepo}
-          - Name: GITHUB_BRANCH
-            Type: PLAINTEXT
-            Value: ${GitHubBranch}            
-
       Source:
-        Type: CODEPIPELINE
-        GitCloneDepth: 1
-        # Location: !Sub 'https://github.com/${GitHubUser}/${GitHubRepo}.git'
-        # BuildSpec: buildspec-setup.yml
-        BuildSpec: !Sub | 
-          version: 0.2
-          env:
-            shell: bash
-            secrets-manager:
-              GITHUB_TOKEN: ${Secrets}:Token
-              GITHUB_USERNAME: ${Secrets}:Username
-          phases:
-            install:
-              runtime-versions:
-                python: 3.9
-              commands:
-                - echo install phase started on `date`
-                - python --version
-                - 'curl -O https://bootstrap.pypa.io/get-pip.py'
-                - python3 get-pip.py
-                - pip install --upgrade pip
-                - pip3 install taskcat
-                - pip3 install --upgrade taskcat
-            # pre_build:
-            #   commands:
-            #     - echo "https://$GITHUB_USERNAME:$GITHUB_TOKEN@github.com" > ~/.git-credentials
-            #     - git config --global credential.helper store
-            #     - git config --global url."https://github.com/".insteadOf "git@github.com:"
-            #     - git config --global init.defaultBranch ${GITHUB_BRANCH}
-            #     - git clone git@github.com:Aerospike-DBaaS/quickstart-aerospike.git
-            #     - git submodule update --init --recursive    
-            build:
-              commands:
-                - echo Build phase started on `date`
-                - git submodule update --init --recursive    
-                - taskcat test run -n -k -t aerospike-single-region
-
-artifacts:
-  files:
-    - '**/*'
-
+        Type: GITHUB
+        GitSubmodulesConfig:
+          FetchSubmodules: true
+        Location: !Sub 'https://github.com/${GitHubUser}/${GitHubRepo}.git'
+        BuildSpec: buildspec-setup.yml
       TimeoutInMinutes: 10
   CodeBuildCleanup:
     Type: 'AWS::CodeBuild::Project'
@@ -243,34 +178,6 @@ artifacts:
       Source:
         Type: CODEPIPELINE
       TimeoutInMinutes: 60
-  CodeBuildDashboard:
-    Type: 'AWS::CodeBuild::Project'
-    DependsOn: CodeBuildRole
-    Properties:
-      Description: Deploy site to S3
-      ServiceRole: !GetAtt CodeBuildRole.Arn
-      Artifacts:
-        Type: CODEPIPELINE
-      Environment:
-        Type: LINUX_CONTAINER
-        ComputeType: BUILD_GENERAL1_SMALL
-        Image: 'aws/codebuild/amazonlinux2-x86_64-standard:4.0'
-      Source:
-        Type: CODEPIPELINE
-        BuildSpec: !Sub |
-          version: 0.2
-          phases:
-            install:
-              runtime-versions:
-                python: 3.9
-            post_build:
-              commands:
-                - aws s3 cp --recursive --acl public-read ./taskcat_outputs s3://${SiteBucket}/ 
-          artifacts:
-            type: zip
-            files:
-              - ./index.html
-      TimeoutInMinutes: 10
   PipelineBucket:
     Type: 'AWS::S3::Bucket'
     DeletionPolicy: Delete
@@ -326,19 +233,6 @@ artifacts:
                 ProjectName:
                   Ref: CodeBuildTaskCatTest
               RunOrder: 10
-            - InputArtifacts:
-                - Name: TaskCatArtifacts
-              Name: TaskCatDashboard
-              ActionTypeId:
-                Category: Test
-                Owner: AWS
-                Version: '1'
-                Provider: CodeBuild
-              OutputArtifacts: []
-              Configuration:
-                ProjectName:
-                  Ref: CodeBuildDashboard
-              RunOrder: 20
         - Name: Cleanup
           Actions:
             - InputArtifacts:
@@ -362,6 +256,3 @@ Outputs:
     Value: !Sub >-
       https://console.aws.amazon.com/codepipeline/home?region=${AWS::Region}#/view/${Pipeline}
     Description: CodePipeline URL
-  TaskCatDashboardUrl:
-    Value: !Sub 'http://${SiteBucket}.s3-website-us-east-1.amazonaws.com'
-    Description: URL for TaskCat Dashboard (Available after the CodePipeline completes)
