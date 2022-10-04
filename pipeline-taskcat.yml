@@ -42,6 +42,15 @@ Metadata:
       GitHubBranch:
         default: GitHub Branch Name
 Resources:
+  Secrets:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Description: TaskCat CI secrets.
+      SecretString: !Sub >-
+        {
+          "Token": "${GitHubToken}",
+          "Username": "${GitHubUser}"
+        }
   SiteBucket:
     Type: 'AWS::S3::Bucket'
     DeletionPolicy: Retain
@@ -160,9 +169,47 @@ Resources:
             Value: ${GitHubBranch}            
 
       Source:
-        Type: GITHUB
-        Location: !Sub 'https://github.com/${GitHubUser}/${GitHubRepo}.git'
-        BuildSpec: buildspec-setup.yml
+        Type: CODEPIPELINE
+        GitCloneDepth: 1
+        # Location: !Sub 'https://github.com/${GitHubUser}/${GitHubRepo}.git'
+        # BuildSpec: buildspec-setup.yml
+        BuildSpec: !Sub | 
+          version: 0.2
+          env:
+            shell: bash
+            secrets-manager:
+              GITHUB_TOKEN: ${Secrets}:Token
+              GITHUB_USERNAME: ${Secrets}:Username
+          phases:
+            install:
+              runtime-versions:
+                python: 3.9
+              commands:
+                - echo install phase started on `date`
+                - python --version
+                - 'curl -O https://bootstrap.pypa.io/get-pip.py'
+                - python3 get-pip.py
+                - pip install --upgrade pip
+                - pip3 install taskcat
+                - pip3 install --upgrade taskcat
+            # pre_build:
+            #   commands:
+            #     - echo "https://$GITHUB_USERNAME:$GITHUB_TOKEN@github.com" > ~/.git-credentials
+            #     - git config --global credential.helper store
+            #     - git config --global url."https://github.com/".insteadOf "git@github.com:"
+            #     - git config --global init.defaultBranch ${GITHUB_BRANCH}
+            #     - git clone git@github.com:Aerospike-DBaaS/quickstart-aerospike.git
+            #     - git submodule update --init --recursive    
+            build:
+              commands:
+                - echo Build phase started on `date`
+                - git submodule update --init --recursive    
+                - taskcat test run -n -k -t aerospike-single-region
+
+artifacts:
+  files:
+    - '**/*'
+
       TimeoutInMinutes: 10
   CodeBuildCleanup:
     Type: 'AWS::CodeBuild::Project'
