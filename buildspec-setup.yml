@@ -13,6 +13,7 @@ phases:
       - pip3 install --upgrade taskcat
   build:
     commands:
+      - git submodule update --init --recursive
       - echo Build phase started on `date`
       - taskcat test run -n -k -t aerospike-single-region
 
