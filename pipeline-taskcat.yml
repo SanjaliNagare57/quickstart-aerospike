@@ -141,6 +141,7 @@ Resources:
               'Fn::Sub': '${PipelineBucket}'
       Source:
         Type: GITHUB
+        GitCloneDepth: 0
         GitSubmodulesConfig:
           FetchSubmodules: true
         Location: !Sub 'https://github.com/${GitHubUser}/${GitHubRepo}.git'
