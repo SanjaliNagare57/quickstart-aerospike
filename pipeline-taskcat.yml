@@ -42,6 +42,16 @@ Metadata:
       GitHubBranch:
         default: GitHub Branch Name
 Resources:
+  # ArtifactBucket:
+  #   Type: AWS::S3::Bucket
+  #   Properties:
+  #     AccessControl: Private
+  #     LifecycleConfiguration:
+  #       Rules:
+  #         - NoncurrentVersionExpirationInDays: 30
+  #           Status: Enabled
+  #     VersioningConfiguration:
+  #       Status: Enabled
   CodePipelineRole:
     Type: 'AWS::IAM::Role'
     Properties:
@@ -129,28 +139,21 @@ Resources:
       Description: Setup Test Files. For example uploading to S3
       ServiceRole: !GetAtt CodeBuildRole.Arn
       Artifacts:
-        Type: NO_ARTIFACTS
+        Type: CODEPIPELINE
       Environment:
         Type: LINUX_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL
         Image: 'aws/codebuild/amazonlinux2-x86_64-standard:4.0'
         EnvironmentVariables:
-          - Name: PIPELINE_BUCKET
-            Type: PLAINTEXT
-            Value:
-              'Fn::Sub': '${PipelineBucket}'
           - Name: GITHUB_REPO
-            Type: PLAINTEXT
             Value: !Ref GitHubRepo
           - Name: GITHUB_USER
-            Type: PLAINTEXT
             Value: !Ref GitHubUser
           - Name: GITHUB_BRANCH
-            Type: PLAINTEXT
             Value: !Ref GitHubBranch
           - Name: GITHUB_TOKEN
-            Type: PLAINTEXT
             Value: !Ref GitHubToken
+        PrivilegedMode: true
       Source:
         Type: CODEPIPELINE
         GitCloneDepth: 1
@@ -199,7 +202,6 @@ Resources:
           artifacts:
             files:
               - '**/*'
-      TimeoutInMinutes: 10
   PipelineBucket:
     Type: 'AWS::S3::Bucket'
     DeletionPolicy: Delete
@@ -218,7 +220,7 @@ Resources:
                 Version: '1'
                 Provider: GitHub
               OutputArtifacts:
-                - Name: SourceArtifacts
+                - Name: Source
               Configuration:
                 Owner: !Ref GitHubUser
                 Repo: !Ref GitHubRepo
