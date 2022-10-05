@@ -185,15 +185,6 @@ Resources:
                 - git checkout --force --track origin/$GITHUB_BRANCH
                 - git submodule init
                 - git submodule update --init --recursive
-#                - |
-#                  git config -f .gitmodules --get-regexp '^submodule\..*\.path$' |
-#                    while read path_key path
-#                    do
-#                        url_key=$(echo $path_key | sed 's/\.path/.url/')
-#                        url=$(git config -f .gitmodules --get "$url_key")
-#                        git submodule add $url $path
-#                    done
-
             build:
               commands:
                 - echo Build phase started on `date`
