@@ -139,13 +139,68 @@ Resources:
             Type: PLAINTEXT
             Value:
               'Fn::Sub': '${PipelineBucket}'
+          - Name: GITHUB_REPO
+            Type: PLAINTEXT
+            Value: !Ref GitHubRepo
+          - Name: GITHUB_USER
+            Type: PLAINTEXT
+            Value: !Ref GitHubUser
+          - Name: GITHUB_BRANCH
+            Type: PLAINTEXT
+            Value: !Ref GitHubBranch
+          - Name: GITHUB_TOKEN
+            Type: PLAINTEXT
+            Value: !Ref GitHubToken
       Source:
-        Type: GITHUB
-        GitCloneDepth: 0
+        Type: CODEPIPELINE
+        GitCloneDepth: 1
         GitSubmodulesConfig:
           FetchSubmodules: true
-        Location: !Sub 'https://github.com/${GitHubUser}/${GitHubRepo}.git'
-        BuildSpec: buildspec-setup.yml
+        BuildSpec: !Sub |
+          version: 0.2
+          phases:
+            install:
+              runtime-versions:
+                python: 3.*
+              commands:
+                - echo install phase started on `date`
+                - apt-get -qy update
+                - python --version
+                - 'curl -O https://bootstrap.pypa.io/get-pip.py'
+                - python3 get-pip.py
+                - pip install --upgrade pip
+                - pip3 -q install cfn-lint pre-commit taskcat yq
+                - pip3 install --upgrade taskcat
+            pre_build:
+              commands:
+                - echo "Entered the pre_build phase  on `date` "
+                - echo "Current directory is $CODEBUILD_SRC_DIR"
+                - echo "Temporarily adding git credential store..."
+                - echo "https://$GITHUB_USER:$GITHUB_TOKEN@github.com" > ~/.git-credentials
+                - git config --global credential.helper store
+                - git config --global url."https://github.com/".insteadOf "git@github.com:"
+                - git init
+                - git remote add origin https://github.com/$GITHUB_USER/$GITHUB_REPO.git
+                - git fetch
+                - git checkout --force --track origin/$GITHUB_BRANCH
+                - |
+                  git config -f .gitmodules --get-regexp '^submodule\..*\.path$' |
+                    while read path_key path
+                    do
+                        url_key=$(echo $path_key | sed 's/\.path/.url/')
+                        url=$(git config -f .gitmodules --get "$url_key")
+                        git submodule add $url $path
+                    done
+                - git submodule init
+                - git submodule update --init --recursive
+            build:
+              commands:
+                - echo Build phase started on `date`
+                - git submodule update --init --recursive
+                - taskcat test run -n -k -t aerospike-single-region
+          artifacts:
+            files:
+              - '**/*'
       TimeoutInMinutes: 10
   CodeBuildCleanup:
     Type: 'AWS::CodeBuild::Project'
@@ -160,9 +215,27 @@ Resources:
         ComputeType: BUILD_GENERAL1_SMALL
         Image: 'aws/codebuild/amazonlinux2-x86_64-standard:4.0'
       Source:
-        Type: GITHUB
-        Location: !Sub 'https://github.com/${GitHubUser}/${GitHubRepo}.git'
-        BuildSpec: buildspec-cleanup.yml
+        Type: CODEPIPELINE
+        GitCloneDepth: 1
+        GitSubmodulesConfig:
+          FetchSubmodules: true
+        BuildSpec: !Sub |
+          version: 0.2
+          phases:
+            install:
+              runtime-versions:
+                python: 3.9
+              commands:
+                - python --version
+            build:
+              commands:
+                - echo In buildspec-cleanup.yml Build started on `date`
+            post_build:
+              commands:
+                - echo In buildspec-cleanup.yml Build completed on `date`
+          artifacts:
+            files:
+              - '**/*'
       TimeoutInMinutes: 10
   CodeBuildTaskCatTest:
     Type: 'AWS::CodeBuild::Project'
