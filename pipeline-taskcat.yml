@@ -162,7 +162,7 @@ Resources:
           phases:
             install:
               runtime-versions:
-                python: 3.*
+                python: 3.x
               commands:
                 - echo install phase started on `date`
                 - apt-get -qy update
