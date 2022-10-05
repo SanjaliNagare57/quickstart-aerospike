@@ -183,14 +183,6 @@ Resources:
                 - git remote add origin https://github.com/$GITHUB_USER/$GITHUB_REPO.git
                 - git fetch
                 - git checkout --force --track origin/$GITHUB_BRANCH
-#                - |
-#                  git config -f .gitmodules --get-regexp '^submodule\..*\.path$' |
-#                    while read path_key path
-#                    do
-#                        url_key=$(echo $path_key | sed 's/\.path/.url/')
-#                        url=$(git config -f .gitmodules --get "$url_key")
-#                        git submodule add $url $path
-#                    done
                 - git submodule init
                 - git submodule update --init --recursive
             build:
