@@ -165,7 +165,6 @@ Resources:
                 python: 3.x
               commands:
                 - echo install phase started on `date`
-                - apt-get -qy update
                 - python --version
                 - 'curl -O https://bootstrap.pypa.io/get-pip.py'
                 - python3 get-pip.py
