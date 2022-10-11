@@ -42,16 +42,6 @@ Metadata:
       GitHubBranch:
         default: GitHub Branch Name
 Resources:
-  # ArtifactBucket:
-  #   Type: AWS::S3::Bucket
-  #   Properties:
-  #     AccessControl: Private
-  #     LifecycleConfiguration:
-  #       Rules:
-  #         - NoncurrentVersionExpirationInDays: 30
-  #           Status: Enabled
-  #     VersioningConfiguration:
-  #       Status: Enabled
   CodePipelineRole:
     Type: 'AWS::IAM::Role'
     Properties:
@@ -110,6 +100,7 @@ Resources:
             Statement:
               - Action:
                   - 'apigateway:*'
+                  - 'autoscaling:*'
                   - 'cloudformation:*'
                   - 'cloudwatch:*'
                   - 'cloudtrail:*'
@@ -129,6 +120,8 @@ Resources:
                   - 's3:*'
                   - 'sns:*'
                   - 'sqs:*'
+                  - 'sts:*'
+                  - 'ssm:*'
                 Effect: Allow
                 Resource: '*'
             Version: 2012-10-17
@@ -188,7 +181,6 @@ Resources:
             build:
               commands:
                 - echo Build phase started on `date`
-                - git submodule update --init --recursive
                 - taskcat test run -n -k -t aerospike-single-region
           artifacts:
             files:
