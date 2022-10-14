@@ -6,7 +6,10 @@ To post feedback, submit feature ideas, or report bugs, use the **Issues** secti
 
 To submit code for this Quick Start, see the [AWS Quick Start Contributor's Kit](https://aws-quickstart.github.io/).
 
-
+### 
+``` bash
+yq e -i '.Mappings.AWSAMIRegionMap.us-east-1.AEROSPIKEAMI = "<ami-id>"' templates/aerospike-cluster-workload.template.yaml
+```
 
 ### Running tests
 ``` bash
