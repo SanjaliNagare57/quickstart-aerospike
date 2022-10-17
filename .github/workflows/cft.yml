@@ -1,0 +1,48 @@
+name: Deploy to Cloudformation
+
+on:
+#   push:
+#     branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+      inputs:
+        ami:
+          description: 'us-east-1 ami'     
+          required: false
+          default: 'ami-001ad985256f88415'
+        region:
+          description: 'AWS Region'
+          required: true
+          default: 'us-east-1'
+
+jobs:
+  taskcat-ci:
+    runs-on: ubuntu-latest
+    name: Taskcat CI
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules : true
+    
+    - name: Replace AMI
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq e -i '.Mappings.AWSAMIRegionMap.us-east-1.AEROSPIKEAMI = "${{ github.event.inputs.ami }}"' templates/aerospike-cluster-workload.template.yaml
+
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+
+    - name: Deploy Aerospike AWS Quickstart CloudFormation
+      uses: aws-actions/aws-cloudformation-github-deploy@v1
+      with:
+        name: takcat-ci-test
+        template: pipeline-taskcat.yml
+        no-fail-on-empty-changeset: "1"
+        capabilities: CAPABILITY_NAMED_IAM
+        disable-rollback: true
