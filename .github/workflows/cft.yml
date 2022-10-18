@@ -30,6 +30,9 @@ jobs:
       uses: mikefarah/yq@master
       with:
         cmd: yq e -i '.Mappings.AWSAMIRegionMap.us-east-1.AEROSPIKEAMI = "${{ github.event.inputs.ami }}"' templates/aerospike-cluster-workload.template.yaml
+   
+    - name: Verify AMI-ID
+      run: cat cluster-workload.template.yaml | grep "<input_ami>" 
 
     - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v1
